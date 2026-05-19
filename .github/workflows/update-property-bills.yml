@@ -28,4 +28,5 @@ jobs:
           GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
           GOOGLE_SHEET_NAME: ${{ vars.GOOGLE_SHEET_NAME || 'Sheet1' }}
           PROPERTY_COLUMN: ${{ vars.PROPERTY_COLUMN || 'Property Number' }}
+          PROPERTY_NUMBERS: ${{ vars.PROPERTY_NUMBERS }}
         run: python kdmc_property_tracker.py
