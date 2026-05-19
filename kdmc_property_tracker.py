@@ -219,15 +219,24 @@ def fetch_property_details(property_number):
         raise RuntimeError(message or "KDMC did not return bill details")
 
     current_tax, current_penalty, rebate = extract_table_numbers(soup)
+
+    def format_currency(value):
+        value = clean_text(value)
+        if not value or value == "0":
+            return "₹0.00"
+        # Remove existing symbol if any and ensure it starts with ₹
+        value = re.sub(r"^[^\d]+", "", value)
+        return f"₹{value}"
+
     return {
         "Owner Name": first_value(soup, "#primaryOwnerName"),
         "Address": first_value(soup, "#address"),
         "Location": first_value(soup, "#location"),
-        "Current Tax": current_tax,
-        "Current Penalty": current_penalty,
-        "Rebate": rebate,
-        "Total Payable": first_value(soup, "#totalPayable"),
-        "Payment Amount": first_value(soup, "#payAmount"),
+        "Current Tax": format_currency(current_tax),
+        "Current Penalty": format_currency(current_penalty),
+        "Rebate": format_currency(rebate),
+        "Total Payable": format_currency(first_value(soup, "#totalPayable")),
+        "Payment Amount": format_currency(first_value(soup, "#payAmount")),
         "Last Checked": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
         "Status": "OK",
     }
