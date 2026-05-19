@@ -35,6 +35,10 @@ def get_required_env(name):
 
 
 def open_sheet():
+    apps_script_url = os.getenv("APPS_SCRIPT_WEB_APP_URL")
+    if apps_script_url:
+        return AppsScriptSheet(apps_script_url, get_required_env("APPS_SCRIPT_TOKEN"))
+
     service_account_json = get_required_env("GOOGLE_SERVICE_ACCOUNT_JSON")
     sheet_id = get_required_env("GOOGLE_SHEET_ID")
     credentials_info = json.loads(service_account_json)
@@ -45,6 +49,49 @@ def open_sheet():
     credentials = Credentials.from_service_account_info(credentials_info, scopes=scopes)
     client = gspread.authorize(credentials)
     return client.open_by_key(sheet_id).worksheet(SHEET_NAME)
+
+
+class AppsScriptSheet:
+    def __init__(self, url, token):
+        self.url = url
+        self.token = token
+
+    def _call(self, payload):
+        response = requests.post(
+            self.url,
+            json={"token": self.token, **payload},
+            timeout=30,
+        )
+        response.raise_for_status()
+        data = response.json()
+        if not data.get("ok"):
+            raise RuntimeError(data.get("error", "Apps Script request failed"))
+        return data
+
+    def row_values(self, row_number):
+        return self._call({"action": "headers"}).get("headers", [])
+
+    def update(self, range_name, values):
+        if range_name in ("A1", "1:1"):
+            self._call({"action": "setHeaders", "headers": values[0]})
+            return
+        raise RuntimeError(f"Unsupported Apps Script update range: {range_name}")
+
+    def get_all_records(self):
+        return self._call({"action": "rows"}).get("rows", [])
+
+    def batch_update(self, updates, value_input_option="USER_ENTERED"):
+        values = {}
+        row_number = None
+        for update in updates:
+            cell = update["range"]
+            match = re.match(r"([A-Z]+)(\d+)$", cell)
+            if not match:
+                raise RuntimeError(f"Unsupported Apps Script cell range: {cell}")
+            column_letters, row_text = match.groups()
+            row_number = int(row_text)
+            values[column_letters] = update["values"][0][0]
+        self._call({"action": "updateRow", "rowNumber": row_number, "values": values})
 
 
 def ensure_headers(worksheet):
