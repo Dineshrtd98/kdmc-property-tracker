@@ -1,10 +1,12 @@
 import json
 import os
 import re
+import ssl
 from datetime import datetime, timezone
 
 import gspread
 import requests
+from requests.adapters import HTTPAdapter
 from bs4 import BeautifulSoup
 from google.oauth2.service_account import Credentials
 
@@ -12,6 +14,7 @@ from google.oauth2.service_account import Credentials
 BASE_URL = "https://kdmc.gov.in/kdmc/PropertyBillPayment.html"
 SHEET_NAME = os.getenv("GOOGLE_SHEET_NAME", "Sheet1")
 PROPERTY_COLUMN = os.getenv("PROPERTY_COLUMN", "Property Number")
+SSL_OP_LEGACY_SERVER_CONNECT = 0x4
 
 OUTPUT_COLUMNS = [
     "Owner Name",
@@ -25,6 +28,20 @@ OUTPUT_COLUMNS = [
     "Last Checked",
     "Status",
 ]
+
+
+class LegacyTlsAdapter(HTTPAdapter):
+    def init_poolmanager(self, *args, **kwargs):
+        context = ssl.create_default_context()
+        context.options |= SSL_OP_LEGACY_SERVER_CONNECT
+        kwargs["ssl_context"] = context
+        return super().init_poolmanager(*args, **kwargs)
+
+    def proxy_manager_for(self, *args, **kwargs):
+        context = ssl.create_default_context()
+        context.options |= SSL_OP_LEGACY_SERVER_CONNECT
+        kwargs["ssl_context"] = context
+        return super().proxy_manager_for(*args, **kwargs)
 
 
 def get_required_env(name):
@@ -157,6 +174,7 @@ def extract_table_numbers(soup):
 
 def fetch_property_details(property_number):
     session = requests.Session()
+    session.mount("https://kdmc.gov.in", LegacyTlsAdapter())
     headers = {
         "User-Agent": "Mozilla/5.0 (compatible; KDMCPropertyTracker/1.0)",
         "Referer": BASE_URL,
