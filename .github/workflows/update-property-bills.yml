@@ -1,0 +1,29 @@
+name: Update KDMC property bills
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "30 2 * * *"
+
+jobs:
+  update-property-bills:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Update Google Sheet
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+          GOOGLE_SHEET_NAME: ${{ vars.GOOGLE_SHEET_NAME || 'Sheet1' }}
+          PROPERTY_COLUMN: ${{ vars.PROPERTY_COLUMN || 'Property Number' }}
+        run: python kdmc_property_tracker.py
