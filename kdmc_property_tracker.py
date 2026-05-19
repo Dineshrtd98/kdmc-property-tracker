@@ -223,10 +223,20 @@ def update_row(worksheet, row_number, columns, values):
     worksheet.batch_update(updates, value_input_option="USER_ENTERED")
 
 
+def records_from_env():
+    property_numbers = os.getenv("PROPERTY_NUMBERS", "")
+    if not property_numbers:
+        return []
+    numbers = [clean_text(value) for value in re.split(r"[\n,]+", property_numbers)]
+    return [{PROPERTY_COLUMN: number} for number in numbers if number]
+
+
 def main():
     worksheet = open_sheet()
     columns = ensure_headers(worksheet)
     records = worksheet.get_all_records()
+    if not records:
+        records = records_from_env()
 
     for offset, record in enumerate(records, start=2):
         property_number = clean_text(record.get(PROPERTY_COLUMN, ""))
@@ -241,6 +251,7 @@ def main():
                 "Last Checked": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
                 "Status": f"ERROR: {exc}",
             }
+        details[PROPERTY_COLUMN] = property_number
         update_row(worksheet, offset, columns, details)
 
 
