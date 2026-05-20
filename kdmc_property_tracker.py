@@ -2,7 +2,7 @@ import json
 import os
 import re
 import ssl
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 import gspread
 import requests
@@ -237,7 +237,7 @@ def fetch_property_details(property_number):
         "Rebate": format_currency(rebate),
         "Total Payable": format_currency(first_value(soup, "#totalPayable")),
         "Payment Amount": format_currency(first_value(soup, "#payAmount")),
-        "Last Checked": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+        "Last Checked": datetime.now(timezone(timedelta(hours=5, minutes=30))).strftime("%Y-%m-%d %H:%M:%S IST"),
         "Status": "OK",
     }
 
@@ -275,7 +275,7 @@ def main():
             details = fetch_property_details(property_number)
         except Exception as exc:
             details = {
-                "Last Checked": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+                "Last Checked": datetime.now(timezone(timedelta(hours=5, minutes=30))).strftime("%Y-%m-%d %H:%M:%S IST"),
                 "Status": f"ERROR: {exc}",
             }
         details[PROPERTY_COLUMN] = property_number
