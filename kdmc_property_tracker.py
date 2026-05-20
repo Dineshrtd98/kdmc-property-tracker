@@ -2,6 +2,7 @@ import json
 import os
 import re
 import ssl
+import time
 from datetime import datetime, timezone, timedelta
 
 import gspread
@@ -270,14 +271,21 @@ def main():
         if not property_number:
             continue
 
-        try:
-            print(f"Checking {property_number}")
-            details = fetch_property_details(property_number)
-        except Exception as exc:
-            details = {
-                "Last Checked": datetime.now(timezone(timedelta(hours=5, minutes=30))).strftime("%Y-%m-%d %H:%M:%S IST"),
-                "Status": f"ERROR: {exc}",
-            }
+        for attempt in range(5):
+            try:
+                print(f"Checking {property_number} (Attempt {attempt + 1})")
+                details = fetch_property_details(property_number)
+                break
+            except Exception as exc:
+                print(f"Error checking {property_number}: {exc}")
+                if attempt < 4:
+                    print("Retrying in 5 seconds...")
+                    time.sleep(5)
+                else:
+                    details = {
+                        "Last Checked": datetime.now(timezone(timedelta(hours=5, minutes=30))).strftime("%Y-%m-%d %H:%M:%S IST"),
+                        "Status": f"ERROR: {exc}",
+                    }
         details[PROPERTY_COLUMN] = property_number
         update_row(worksheet, offset, columns, details)
 
